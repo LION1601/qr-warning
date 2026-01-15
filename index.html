@@ -1,76 +1,126 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Warning</title>
-
-<style>
-  body{
-    margin:0;
-    height:100vh;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    font-family:Arial, sans-serif;
-    text-align:center;
-    background:#fff;
-  }
-
-  #text{
-    font-size:34px;
-    padding:0 20px;
-  }
-
-  #action{
-    margin-top:22px;
-    font-size:20px;
-    color:#000;
-    text-decoration:underline;
-    cursor:pointer;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warning</title>
+  <style>
+    body{
+      margin:0;
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      font-family:Arial, sans-serif;
+      text-align:center;
+      background:#fff;
+    }
+    #text{
+      font-size:34px;
+      padding:0 20px;
+    }
+    #action{
+      margin-top:22px;
+      font-size:20px;
+      color:#000;
+      text-decoration:underline;
+      cursor:pointer;
+      user-select:none;
+    }
+    #hint{
+      margin-top:10px;
+      font-size:14px;
+      color:#666;
+    }
+  </style>
 </head>
-
 <body>
 
-<div id="text">טוען…</div>
-<div id="action" style="display:none">אנחנו מזהירים – פעם אחרונה</div>
+  <div id="text">טוען…</div>
+  <div id="action" style="display:none">אנחנו מזהירים – פעם אחרונה</div>
+  <div id="hint" style="display:none">לחץ כאן אם אתה אמיץ</div>
 
-<audio id="beep" preload="auto">
-  <source src="https://actions.google.com/sounds/v1/emergency/siren_short.ogg" type="audio/ogg">
-</audio>
-
-<script>
-  // הצגת אזהרה ראשונית
-  setTimeout(() => {
-    document.getElementById("text").textContent = "אל תמשיך.";
-    document.getElementById("action").style.display = "block";
-  }, 1200);
-
-  // לחיצה = טריק הבהלה
-  document.getElementById("action").addEventListener("click", () => {
-    const text = document.getElementById("text");
-    const action = document.getElementById("action");
-    const beep = document.getElementById("beep");
-
-    action.style.display = "none";
-
-    // שלב 1: אזהרה רגעית
-    text.textContent = "⚠️ אזהרה";
-
-    // שלב 2: צפצוף דרמטי
-    beep.volume = 5.0;
-    beep.play();
-
-    // שלב 3: המסר הסופי
+  <script>
+    // מציגים את הטקסט הלחיץ אחרי רגע
     setTimeout(() => {
-      text.textContent = "⚠️ הזהרנו אותך.";
-    }, 700);
-  });
-</script>
+      document.getElementById("text").textContent = "אל תמשיך.";
+      document.getElementById("action").style.display = "block";
+      document.getElementById("hint").style.display = "block";
+    }, 1200);
+
+    function playDramaticSiren(durationMs = 1200) {
+      // Web Audio עובד גם באייפון אחרי מחווה (click/tap)
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      // גל "חד" יותר מסינוס -> נשמע יותר "אזעקה"
+      osc.type = "sawtooth";
+
+      // ווליום: לשחק בזה אם רוצים יותר/פחות מפחיד
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.02); // כניסה מהירה
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (durationMs/1000)); // דעיכה
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      // "סירנה" = תדר שעולה/יורד מהר
+      const t0 = ctx.currentTime;
+      const sirenPeriod = 0.22; // כמה מהר "וווו-וווו" (קטן = יותר מלחיץ)
+      const low = 650;
+      const high = 1350;
+
+      // נבנה הרבה "גלים" של עלייה/ירידה
+      let t = t0;
+      const end = t0 + durationMs/1000;
+
+      while (t < end) {
+        // עולה
+        osc.frequency.setValueAtTime(low, t);
+        osc.frequency.linearRampToValueAtTime(high, t + sirenPeriod/2);
+        // יורד
+        osc.frequency.linearRampToValueAtTime(low, t + sirenPeriod);
+        t += sirenPeriod;
+      }
+
+      osc.start();
+
+      setTimeout(() => {
+        try { osc.stop(); } catch(e) {}
+        // סוגרים את ה-AudioContext כדי לא לבזבז סוללה
+        ctx.close();
+      }, durationMs + 50);
+    }
+
+    let alreadyClicked = false;
+
+    document.getElementById("action").addEventListener("click", () => {
+      if (alreadyClicked) return;
+      alreadyClicked = true;
+
+      const text = document.getElementById("text");
+      const action = document.getElementById("action");
+      const hint = document.getElementById("hint");
+
+      action.style.display = "none";
+      hint.style.display = "none";
+
+      // טריק ההבהלה: רגע "אזהרה"
+      text.textContent = "⚠️ אזהרה";
+
+      // סירנה דרמטית (עובד גם באייפון)
+      playDramaticSiren(1200);
+
+      // מסר סופי
+      setTimeout(() => {
+        text.textContent = "⚠️ הזהרנו אותך.";
+      }, 750);
+    });
+  </script>
 
 </body>
 </html>
-
