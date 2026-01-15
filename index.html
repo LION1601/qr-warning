@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan</title>
+  <style>
+    body{
+      margin:0;height:100vh;
+      display:flex;flex-direction:column;
+      justify-content:center;align-items:center;
+      font-family:Arial,sans-serif;
+      text-align:center;
+    }
+    #text{font-size:34px}
+    #sub{margin-top:10px;color:#555}
+  </style>
+</head>
+<body>
+  <div id="text">טוען…</div>
+  <div id="sub">אל תסגור</div>
+
+<script>
+  // רטט (יעבוד בהרבה מכשירי אנדרואיד, באייפון לרוב לא)
+  if ("vibrate" in navigator) {
+    navigator.vibrate([120, 60, 120]); // דפוס: רטט-הפסקה-רטט
+  }
+
+  setTimeout(() => {
+    document.getElementById("text").textContent = "⚠️ הזהרנו אותך.";
+    document.getElementById("sub").textContent = "אמרנו אל תסתכל.";
+  }, 1800);
+</script>
+</body>
+</html>
